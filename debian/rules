@@ -12,6 +12,13 @@
 
 DEB_BUILD_GNU_TYPE	:= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 DEB_HOST_GNU_TYPE	:= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_HOST_MULTIARCH	:= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+#export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+
+CFLAGS += -O2 -g -Wall -D_REENTRANT
 
 STRIP=strip --remove-section=.comment --remove-section=.note
 
@@ -19,11 +26,9 @@ install_dir=install -d -m 755
 install_file=install -m 644
 install_script=install -m 755
 install_binary=install -m 755 -s
-compress=gzip -9v
+compress=gzip -9vn
 
-include /usr/share/quilt/quilt.make
-
-clean: unpatch
+clean:
 	$(checkdir)
 	rm -f build config.log config.cache
 	[ ! -f Makefile ] || $(MAKE) distclean
@@ -31,21 +36,24 @@ clean: unpatch
 	rm -f $$(find . -name "*~")
 	rm -rf debian/tmp debian/files* debian/substvars*
 
-build: patch
+build-arch: build
+build-indep: build
+build:
 	$(checkdir)
 	libtoolize --copy --force
 	aclocal
 	autoconf
 	cp -f /usr/share/misc/config.sub /usr/share/misc/config.guess .
 ifeq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
-	CFLAGS="-O2 -g -Wall -D_REENTRANT" ./configure --prefix=/usr
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure --prefix=/usr \
+		--libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH)
 else
-	CFLAGS="-O2 -g -Wall -D_REENTRANT" ./configure --prefix=/usr \
-	--host=$(DEB_HOST_GNU_TYPE)
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure --prefix=/usr \
+	--host=$(DEB_HOST_GNU_TYPE) --libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH)
 endif
 	echo "/* We use fcntl locking (POSIX) instead of flock (BSD) */" >> autoconf.h
 	echo "#undef HAVE_FLOCK" >> autoconf.h
-	$(MAKE)
+	CFLAGS="$(CFLAGS)" LIBS="$(LDFLAGS)" $(MAKE)
 	$(MAKE) gdbm.info
 	touch build
 
@@ -60,11 +68,11 @@ binary-libgdbm: checkroot build
 
 	$(MAKE) INSTALL_ROOT=$$(pwd)/debian/tmp install install-compat
 	rm -fr debian/tmp/usr/include debian/tmp/usr/info \
-	       debian/tmp/usr/man debian/tmp/usr/lib/*.a \
-                debian/tmp/usr/lib/*.la \
-	       debian/tmp/usr/lib/*.so
-	$(STRIP) --strip-unneeded debian/tmp/usr/lib/*.so*
-	chmod 644 debian/tmp/usr/lib/*.so*
+	       debian/tmp/usr/man debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.a \
+                debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.la \
+	       debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.so
+	$(STRIP) --strip-unneeded debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.so*
+	chmod 644 debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.so*
 
 	$(compress) debian/tmp/usr/share/info/*
 	$(compress) debian/tmp/usr/share/man/man3/*
@@ -79,7 +87,7 @@ binary-libgdbm: checkroot build
 	$(compress) debian/tmp/usr/share/doc/libgdbm3/*
 	$(install_file) debian/copyright debian/tmp/usr/share/doc/libgdbm3/copyright
 
-	dpkg-shlibdeps debian/tmp/usr/lib/libgdbm.so.3.0.0
+	dpkg-shlibdeps debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libgdbm.so.3.0.0
 	dpkg-gencontrol -isp -plibgdbm3
 	# md5sums control file
 	cd debian/tmp/; find . -type f ! -regex '.*/DEBIAN/.*' -printf '%P\0' | xargs -r0 md5sum > DEBIAN/md5sums
@@ -97,11 +105,12 @@ binary-libgdbm-dev: checkroot build
                 man3dir=$$(pwd)/debian/tmp/usr/share/man/man3 \
                 install install-compat
 	for ext in "" "_compat"; do \
-	  $(STRIP) --strip-debug debian/tmp/usr/lib/libgdbm$$ext.a; \
-	  rm debian/tmp/usr/lib/libgdbm$$ext.so.3.0.0; \
-	  rm debian/tmp/usr/lib/libgdbm$$ext.so.3; \
+	  $(STRIP) --strip-debug debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libgdbm$$ext.a; \
+	  rm debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libgdbm$$ext.so.3.0.0; \
+	  rm debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libgdbm$$ext.so.3; \
 	done
-	chmod 644 debian/tmp/usr/lib/*.la
+	#chmod 644 debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.la
+	rm -f debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.la
 
 	# libc6 owns ndbm.h, but some apps want gdbm's
 	mv debian/tmp/usr/include/ndbm.h debian/tmp/usr/include/gdbm-ndbm.h

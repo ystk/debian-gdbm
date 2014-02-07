@@ -1,3 +1,26 @@
+gdbm (1.8.3-11) unstable; urgency=low
+
+  * Debian source format is 3.0 (quilt)
+  * Standards version is 3.9.3
+  * Use hardening options
+    Closes: #657040
+  * Fix debian-rules-missing-recommended-target
+
+ -- Anibal Monsalve Salazar <anibal@debian.org>  Sun, 10 Jun 2012 12:56:00 +1000
+
+gdbm (1.8.3-10) unstable; urgency=low
+
+  * Use multiarch library paths
+    Patch by Steve Langasek
+    Closes: 632295
+  * Set SHELL variable in Makefile.in to @SHELL@
+    Add debian/patches/03-Makefile.in.patch
+    Closes: 621934
+  * Fix out-of-date-standards-version
+  * Fix non-empty-dependency_libs-in-la-file
+
+ -- Anibal Monsalve Salazar <anibal@debian.org>  Fri, 01 Jul 2011 22:29:02 +1000
+
 gdbm (1.8.3-9) unstable; urgency=low
 
   * Update upstream homepage address
