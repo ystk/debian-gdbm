@@ -42,6 +42,7 @@ clean:
 	rm -f config.sub config.guess
 	rm -f $$(find . -name "*~")
 	rm -rf debian/tmp debian/files* debian/substvars*
+	dh_clean
 
 build-arch: build
 build-indep: build
@@ -90,9 +91,7 @@ binary-libgdbm: checkroot build
 	$(install_file) debian/shlibs debian/tmp/DEBIAN/
 	$(install_script) debian/postinst debian/postrm debian/tmp/DEBIAN/
 
-	$(install_dir) debian/tmp/usr/share/doc/libgdbm3/
-	$(install_file) debian/changelog debian/tmp/usr/share/doc/libgdbm3/changelog.Debian
-	$(install_file) ChangeLog debian/tmp/usr/share/doc/libgdbm3/changelog
+	dh_installchangelogs -Pdebian/tmp -plibgdbm3
 	$(compress) debian/tmp/usr/share/doc/libgdbm3/*
 	$(install_file) debian/copyright debian/tmp/usr/share/doc/libgdbm3/copyright
 
@@ -144,9 +143,7 @@ binary-libgdbm-dev: checkroot build
 	$(install_dir) debian/tmp/DEBIAN/
 
 	$(install_dir) debian/tmp/usr/share/doc/libgdbm-dev/
-	$(install_file) debian/changelog \
-			debian/tmp/usr/share/doc/libgdbm-dev/changelog.Debian
-	$(install_file) ChangeLog  debian/tmp/usr/share/doc/libgdbm-dev/changelog
+	dh_installchangelogs -Pdebian/tmp -plibgdbm-dev
 	$(install_file) NEWS README debian/tmp/usr/share/doc/libgdbm-dev/
 	$(compress) debian/tmp/usr/share/doc/libgdbm-dev/*
 	$(install_file) debian/copyright \
